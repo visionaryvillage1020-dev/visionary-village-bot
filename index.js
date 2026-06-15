@@ -1,4 +1,5 @@
 const { Client, GatewayIntentBits } = require('discord.js');
+const express = require('express');
 require('dotenv').config();
 
 const client = new Client({
@@ -10,6 +11,19 @@ const client = new Client({
   ]
 });
 
+// === Simple HTTP Server for Render ===
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.get('/', (req, res) => {
+  res.send('Visionary Village Bot is running!');
+});
+
+app.listen(PORT, () => {
+  console.log(`🌐 HTTP server running on port ${PORT}`);
+});
+
+// === Discord Bot Code ===
 client.once('ready', () => {
   console.log(`✅ Bot is online as ${client.user.tag}`);
 });
@@ -17,12 +31,10 @@ client.once('ready', () => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // Simple test command
   if (message.content === '!ping') {
     await message.reply('Pong! 🏓');
   }
 
-  // Welcome new members (basic version)
   if (message.content.toLowerCase().includes('hello')) {
     await message.reply(`Hello ${message.author.username}! Welcome to Visionary Village 👋`);
   }
