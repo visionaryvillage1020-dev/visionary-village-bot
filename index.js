@@ -9,7 +9,7 @@ require('dotenv').config();
 // CONFIGURATION — edit these to match your setup
 // ============================================================
 const CONFIG = {
-  SURVEY_LINK:  'https://forms.gle/pangkDvS4HEdCPoNA',   // Replace with your Google Form / Typeform
+  SURVEY_LINK:  'https://forms.gle/LhnbJ61rBaouuPrQA',   // Replace with your Google Form / Typeform
   BOOKING_LINK: 'https://calendly.com/visionaryvillage1020/30min', // Replace with your Calendly or booking link
 
   CHANNELS: {
@@ -311,6 +311,47 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
+  // !guide — full community guide
+  if (msg.toLowerCase() === '!guide') {
+    await message.reply(
+      `📌 **HOW VISIONARY VILLAGE WORKS**\n` +
+      `──────────────────────────────────\n\n` +
+      `This is not a regular Discord server. Everything runs on a weekly rhythm. The bot keeps it running automatically.\n\n` +
+      `**Weekly schedule:**\n` +
+      `🎯 **Monday 9pm** — Mission drops in #weekly-mission. Post your 3 commitments.\n` +
+      `⚡ **Wednesday 9pm** — Mid-week check in #general. On track or stuck?\n` +
+      `📊 **Friday 9pm** — Progress log reminder in #progress-logs. Report back.\n` +
+      `📞 **Saturday 9am** — Team call reminder in #team-meetings. Show up.\n` +
+      `🔄 **Sunday 8pm** — Week prep reminder in #general. Get ready for Monday.\n\n` +
+      `──────────────────────────────────\n\n` +
+      `**Bot commands:**\n\n` +
+      `\`!log committed: [X] did: [Y] blocked: [Z]\`\n` +
+      `→ Posts your weekly progress log to #progress-logs\n` +
+      `→ Example: \`!log committed: finish landing page did: got 70% done blocked: no time Friday\`\n\n` +
+      `\`!win [your win]\`\n` +
+      `→ Shares a win in #wins — any size counts\n` +
+      `→ Example: \`!win sent my first cold email and got a reply\`\n\n` +
+      `\`!streak\` → Check your current consistency streak\n` +
+      `\`!leaderboard\` → See the top 5 streaks in the community\n` +
+      `\`!guide\` → Get this guide again at any time\n` +
+      `\`!ping\` → Check if the bot is alive\n\n` +
+      `──────────────────────────────────\n\n` +
+      `**What the bot does automatically:**\n` +
+      `→ DMs you the survey and booking link when you join\n` +
+      `→ Gives you the Verified role when you post in #introductions\n` +
+      `→ Reacts to your progress logs and wins so you feel seen\n` +
+      `→ Tracks your weekly streak and shouts you out at 4, 8, and 12 weeks\n` +
+      `→ Posts the weekly schedule automatically\n\n` +
+      `──────────────────────────────────\n\n` +
+      `**Your first steps:**\n` +
+      `1. Fill out the pre-call survey (link in your DM)\n` +
+      `2. Book your onboarding call (link in your DM)\n` +
+      `3. Record your intro video and post it in #introductions\n` +
+      `4. Wait to be placed in a team — your team leader reaches out within 48 hours`
+    ).catch(() => {});
+    return;
+  }
+
   // !help
   if (msg.toLowerCase() === '!help') {
     await message.reply(
@@ -319,6 +360,7 @@ client.on('messageCreate', async (message) => {
       `\`!win [your win]\`\n→ Share a win in #wins\n\n` +
       `\`!streak\`\n→ Check your current consistency streak\n\n` +
       `\`!leaderboard\`\n→ See the top 5 streaks in the community\n\n` +
+      `\`!guide\`\n→ Get the full community guide — how everything works\n\n` +
       `\`!ping\`\n→ Check if the bot is alive`
     ).catch(() => {});
     return;
