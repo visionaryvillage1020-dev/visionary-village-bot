@@ -9,8 +9,8 @@ require('dotenv').config();
 // CONFIGURATION — edit these to match your setup
 // ============================================================
 const CONFIG = {
-  SURVEY_LINK:  'https://your-survey-link.com',   // Replace with your Google Form / Typeform
-  BOOKING_LINK: 'https://your-calendly-link.com', // Replace with your Calendly or booking link
+  SURVEY_LINK:  'https://forms.gle/pangkDvS4HEdCPoNA',   // Replace with your Google Form / Typeform
+  BOOKING_LINK: 'https://calendly.com/visionaryvillage1020/30min', // Replace with your Calendly or booking link
 
   CHANNELS: {
     WELCOME:       'welcome-and-rules',
