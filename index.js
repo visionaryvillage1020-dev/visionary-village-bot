@@ -11,7 +11,7 @@ const client = new Client({
   ]
 });
 
-// === Simple HTTP Server for Render ===
+// === HTTP Server for Render (Required) ===
 const app = express();
 const PORT = process.env.PORT || 10000;
 
@@ -23,7 +23,7 @@ app.listen(PORT, () => {
   console.log(`🌐 HTTP server running on port ${PORT}`);
 });
 
-// === Discord Bot Code ===
+// === Discord Bot ===
 client.once('ready', () => {
   console.log(`✅ Bot is online as ${client.user.tag}`);
 });
