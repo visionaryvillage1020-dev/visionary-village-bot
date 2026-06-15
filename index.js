@@ -7,11 +7,11 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMembers,   // Important for welcome messages
   ]
 });
 
-// === HTTP Server for Render (Required) ===
+// === HTTP Server for Render ===
 const app = express();
 const PORT = process.env.PORT || 10000;
 
@@ -28,15 +28,36 @@ client.once('ready', () => {
   console.log(`✅ Bot is online as ${client.user.tag}`);
 });
 
+// === AUTO WELCOME MESSAGE ===
+client.on('guildMemberAdd', async (member) => {
+  const welcomeChannel = member.guild.channels.cache.find(
+    ch => ch.name === 'introductions' || ch.name === 'welcome' || ch.name === 'general'
+  );
+
+  if (welcomeChannel) {
+    await welcomeChannel.send(
+      `👋 Welcome to **Visionary Village**, ${member}! We're glad you're here.\n\n` +
+      `Please introduce yourself in this channel and check the pinned messages for how everything works.`
+    );
+  }
+
+  // Optional: Send a DM to the new member
+  try {
+    await member.send(
+      `Hey ${member.user.username}! Welcome to **Visionary Village**.\n\n` +
+      `We're excited to have you. Feel free to introduce yourself and let us know what you're working on!`
+    );
+  } catch (err) {
+    console.log('Could not send DM to new member.');
+  }
+});
+
+// Basic commands
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
   if (message.content === '!ping') {
     await message.reply('Pong! 🏓');
-  }
-
-  if (message.content.toLowerCase().includes('hello')) {
-    await message.reply(`Hello ${message.author.username}! Welcome to Visionary Village 👋`);
   }
 });
 
