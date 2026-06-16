@@ -310,26 +310,29 @@ if (msg === '!guide') {
     return;
   }
 
-  if (msg === '!help') {
-    await message.reply(
-      `**Visionary Village Bot Commands**\n\n` +
-      `\`!log\` — Post progress log\n` +
-      `\`!win [text]\` — Share a win\n` +
-      `\`!streak\` — Check your streak\n` +
-      `\`!leaderboard\` — Top consistency streaks\n` +
-      `\`!guide\` — Full community guide\n` +
-      `\`!ping\` — Check if bot is alive`
-    );
-    return;
-  }
+// ==================== !help COMMAND ====================
+if (msg === '!help') {
+  await message.reply(
+    `**Visionary Village — Bot Commands**\n\n` +
+    `**Progress & Accountability**\n` +
+    `\`!log\` — Post your weekly progress log\n` +
+    `\`!win [text]\` — Share a win in #wins\n` +
+    `\`!streak\` — Check your current streak\n` +
+    `\`!leaderboard\` — Top 5 consistency streaks\n\n` +
+    `**Information**\n` +
+    `\`!guide\` — Full explanation of how everything works\n` +
+    `\`!help\` — Show this command list\n` +
+    `\`!ping\` — Check if the bot is online`
+  ).catch(() => {});
+  return;
+}
 });
 
-// ==================== IMPROVED SCHEDULER ====================
 function startScheduler() {
   const guild = client.guilds.cache.first();
   if (!guild) return;
 
-  // Monday 9pm - Mission
+  // Monday 9pm — Weekly Mission
   cron.schedule('0 21 * * 1', async () => {
     const ch = getChannel(guild, CONFIG.CHANNELS.WEEKLY_MISSION);
     if (!ch) return;
@@ -337,45 +340,61 @@ function startScheduler() {
       `**🎯 This Week’s Mission**\n\n` +
       `Post your 3 commitments below:\n\n` +
       `**This week I will:**\n` +
-      `1. [task]\n2. [task]\n3. [task]`
+      `1. [specific task]\n` +
+      `2. [specific task]\n` +
+      `3. [specific task]\n\n` +
+      `Your team leader will review them.`
     ).catch(() => {});
   }, { timezone: CONFIG.TIMEZONE });
 
-  // Wednesday 9pm - Mid-week check
+  // Wednesday 9pm — Mid-week Check
   cron.schedule('0 21 * * 3', async () => {
     const ch = getChannel(guild, CONFIG.CHANNELS.GENERAL);
     if (!ch) return;
     await ch.send(
       `**⚡ Mid-Week Check-In**\n\n` +
-      `Reply with: **[On track]**, **[Need help]**, or **[Off track]**`
+      `How are you tracking this week?\n\n` +
+      `Reply with one of the following:\n` +
+      `• **[On track]**\n` +
+      `• **[Need help]**\n` +
+      `• **[Off track]**`
     ).catch(() => {});
   }, { timezone: CONFIG.TIMEZONE });
 
-  // Friday 9pm - Progress reminder
+  // Friday 9pm — Progress Log Reminder
   cron.schedule('0 21 * * 5', async () => {
     const ch = getChannel(guild, CONFIG.CHANNELS.PROGRESS_LOGS);
     if (!ch) return;
     await ch.send(
       `**📊 Progress Log Time**\n\n` +
-      `Use: \`!log committed: X did: Y blocked: Z\``
+      `Use this command to post your update:\n` +
+      `\`\`\`!log committed: [planned] did: [done] blocked: [what got in the way]\`\`\``
     ).catch(() => {});
   }, { timezone: CONFIG.TIMEZONE });
 
-  // Saturday 9am - Team calls
+  // Saturday 9am — Team Calls
   cron.schedule('0 9 * * 6', async () => {
     const ch = getChannel(guild, CONFIG.CHANNELS.TEAM_MEETINGS);
     if (!ch) return;
-    await ch.send(`**📞 Team Calls Today** — Check with your team leader.`).catch(() => {});
+    await ch.send(
+      `**📞 Team Calls Today**\n\n` +
+      `Check with your team leader for the call time.\n` +
+      `Come prepared with your wins and blockers.`
+    ).catch(() => {});
   }, { timezone: CONFIG.TIMEZONE });
 
-  // Sunday 8pm - Reset
+  // Sunday 8pm — Week Reset
   cron.schedule('0 20 * * 0', async () => {
     const ch = getChannel(guild, CONFIG.CHANNELS.GENERAL);
     if (!ch) return;
-    await ch.send(`**🔄 Sunday Reset** — New week tomorrow. Get ready.`).catch(() => {});
+    await ch.send(
+      `**🔄 Sunday Reset**\n\n` +
+      `New week starts tomorrow.\n` +
+      `Take a few minutes tonight to think about your focus for next week.`
+    ).catch(() => {});
   }, { timezone: CONFIG.TIMEZONE });
 
-  console.log('✅ Scheduler active');
+  console.log('✅ Scheduler running with improved messages');
 }
 
 client.login(process.env.DISCORD_TOKEN);
