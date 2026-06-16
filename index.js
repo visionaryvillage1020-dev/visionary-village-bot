@@ -261,6 +261,27 @@ if (msg.startsWith('!win')) {
   await message.delete().catch(() => {});
   return;
 }
+  // ==================== !guide COMMAND ====================
+if (msg === '!guide') {
+  await message.reply(
+    `**📌 How Visionary Village Works**\n\n` +
+    `This is a structured accountability community. The bot helps keep everything running automatically.\n\n` +
+    `**Weekly Rhythm:**\n` +
+    `• **Monday 9pm** — Mission drops in #weekly-mission\n` +
+    `• **Wednesday 9pm** — Mid-week check-in\n` +
+    `• **Friday 9pm** — Progress log reminder\n` +
+    `• **Saturday** — Team calls\n` +
+    `• **Sunday 8pm** — Week reset\n\n` +
+    `**Useful Commands:**\n` +
+    `• \`!log\` — Post your weekly progress\n` +
+    `• \`!win [text]\` — Share a win\n` +
+    `• \`!streak\` — Check your consistency streak\n` +
+    `• \`!leaderboard\` — Top 5 streaks\n` +
+    `• \`!help\` — See all commands\n\n` +
+    `Stay consistent. That’s what makes this work.`
+  ).catch(() => {});
+  return;
+}
 
   if (msg === '!streak') {
     const userData = await getUserStreak(message.author.id);
