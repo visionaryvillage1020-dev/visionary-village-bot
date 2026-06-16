@@ -299,27 +299,56 @@ if (msg === '!guide') {
   return;
 }
 
-  if (msg === '!streak') {
-    const userData = await getUserStreak(message.author.id);
-    if (!userData) {
-      await message.reply('No streak yet. Start logging with `!log`.');
-    } else {
-      await message.reply(
-        `Your streak: **${userData.current_streak} week${userData.current_streak !== 1 ? 's' : ''}** 🔥\n` +
-        `Total logs: **${userData.total_logs}**`
-      );
-    }
+ // ==================== !streak COMMAND ====================
+if (msg === '!streak') {
+  const userData = await getUserStreak(message.author.id);
+  if (!userData || userData.current_streak === 0) {
+    await message.reply('No streak yet. Start logging with `!log`.');
     return;
   }
 
-  if (msg === '!leaderboard') {
-    const top = await getTopStreaks(5);
-    if (top.length === 0) return message.reply('No streaks yet.');
-    const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
-    const board = top.map((u, i) => `${medals[i]} **${u.username}** — ${u.current_streak} weeks`).join('\n');
-    await message.reply(`**Consistency Leaderboard**\n\n${board}`);
+  const { EmbedBuilder } = require('discord.js');
+  const embed = new EmbedBuilder()
+    .setColor(0x7C3AED)
+    .setAuthor({ 
+      name: message.member.displayName, 
+      iconURL: message.author.displayAvatarURL({ dynamic: true }) 
+    })
+    .setTitle('Your Consistency Streak')
+    .addFields(
+      { name: 'Current Streak', value: `**${userData.current_streak} week${userData.current_streak !== 1 ? 's' : ''}** 🔥`, inline: true },
+      { name: 'Total Logs', value: `**${userData.total_logs}**`, inline: true }
+    )
+    .setTimestamp();
+
+  await message.reply({ embeds: [embed] }).catch(() => {});
+  return;
+}
+
+ // ==================== !leaderboard COMMAND ====================
+if (msg === '!leaderboard') {
+  const top = await getTopStreaks(5);
+  if (top.length === 0) {
+    await message.reply('No streaks yet. Be the first!');
     return;
   }
+
+  const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
+  const description = top.map((u, i) => 
+    `${medals[i]} **${u.username}** — ${u.current_streak} week${u.current_streak !== 1 ? 's' : ''}`
+  ).join('\n');
+
+  const { EmbedBuilder } = require('discord.js');
+  const embed = new EmbedBuilder()
+    .setColor(0x7C3AED)
+    .setTitle('🔥 Consistency Leaderboard')
+    .setDescription(description)
+    .setFooter({ text: 'Top 5 streaks in Visionary Village' })
+    .setTimestamp();
+
+  await message.reply({ embeds: [embed] }).catch(() => {});
+  return;
+}
 
   if (msg === '!ping') {
     await message.reply('Online. 🟢');
