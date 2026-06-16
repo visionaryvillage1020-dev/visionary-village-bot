@@ -196,11 +196,49 @@ client.on('messageCreate', async (message) => {
   }
 
   // ====================== COMMANDS ======================
-  if (msg.startsWith('!log')) {
-    // You can expand this later. For now, keep simple or add full logic
-    await message.reply('Use the full format: `!log committed: X did: Y blocked: Z`');
+// ==================== !log COMMAND ====================
+if (msg.startsWith('!log')) {
+  const progressChannel = getChannel(message.guild, CONFIG.CHANNELS.PROGRESS_LOGS);
+  if (!progressChannel) {
+    await message.reply('Cannot find the #progress-logs channel.').catch(() => {});
     return;
   }
+
+  const content = message.content.slice(4).trim();
+
+  const committedMatch = content.match(/committed:\s*(.+?)(?=\s*did:|\s*blocked:|$)/is);
+  const didMatch = content.match(/did:\s*(.+?)(?=\s*committed:|\s*blocked:|$)/is);
+  const blockedMatch = content.match(/blocked:\s*(.+?)(?=\s*committed:|\s*did:|$)/is);
+
+  if (!committedMatch || !didMatch) {
+    await message.reply(
+      `Use this format:\n` +
+      `\`\`\`\n!log committed: [what you planned] did: [what you did] blocked: [what got in the way]\`\`\`\n` +
+      `Example:\n` +
+      `\`\`\`\n!log committed: finish landing page did: got 70% done blocked: ran out of time\`\`\``
+    ).catch(() => {});
+    return;
+  }
+
+  const committed = committedMatch[1].trim();
+  const did = didMatch[1].trim();
+  const blocked = blockedMatch ? blockedMatch[1].trim() : 'Nothing';
+
+  const streak = await updateStreak(message.author.id, message.author.username);
+  const streakTag = streak > 1 ? ` · ${streak} week streak 🔥` : '';
+
+  await progressChannel.send(
+    `**Progress Log — ${message.member.displayName}**${streakTag}\n` +
+    `───────────────────────────\n` +
+    `📌 **Committed:** ${committed}\n` +
+    `✅ **Did:** ${did}\n` +
+    `🚧 **Blocked by:** ${blocked}\n` +
+    `───────────────────────────`
+  ).catch(() => {});
+
+  await message.delete().catch(() => {});
+  return;
+}
 
   if (msg.startsWith('!win')) {
     const winsChannel = getChannel(message.guild, CONFIG.CHANNELS.WINS);
