@@ -240,15 +240,27 @@ if (msg.startsWith('!log')) {
   return;
 }
 
-  if (msg.startsWith('!win')) {
-    const winsChannel = getChannel(message.guild, CONFIG.CHANNELS.WINS);
-    if (!winsChannel) return;
-    const winText = message.content.slice(4).trim();
-    if (!winText) return message.reply('Tell us what the win is.');
-    await winsChannel.send(`🏆 **Win — ${message.member.displayName}:**\n\n${winText}`);
-    await message.delete().catch(() => {});
+// ==================== !win COMMAND ====================
+if (msg.startsWith('!win')) {
+  const winsChannel = getChannel(message.guild, CONFIG.CHANNELS.WINS);
+  if (!winsChannel) {
+    await message.reply('Cannot find the #wins channel.').catch(() => {});
     return;
   }
+
+  const winText = message.content.slice(4).trim();
+  if (!winText) {
+    await message.reply('Tell us what the win is.\nExample: `!win sent my first cold email and got a reply`').catch(() => {});
+    return;
+  }
+
+  await winsChannel.send(
+    `🏆 **Win — ${message.member.displayName}**\n\n${winText}`
+  ).catch(() => {});
+
+  await message.delete().catch(() => {});
+  return;
+}
 
   if (msg === '!streak') {
     const userData = await getUserStreak(message.author.id);
