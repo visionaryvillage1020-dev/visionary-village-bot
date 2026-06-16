@@ -197,6 +197,7 @@ client.on('messageCreate', async (message) => {
 
   // ====================== COMMANDS ======================
 // ==================== !log COMMAND ====================
+// ==================== !log COMMAND (Improved with Embed) ====================
 if (msg.startsWith('!log')) {
   const progressChannel = getChannel(message.guild, CONFIG.CHANNELS.PROGRESS_LOGS);
   if (!progressChannel) {
@@ -213,9 +214,7 @@ if (msg.startsWith('!log')) {
   if (!committedMatch || !didMatch) {
     await message.reply(
       `Use this format:\n` +
-      `\`\`\`\n!log committed: [what you planned] did: [what you did] blocked: [what got in the way]\`\`\`\n` +
-      `Example:\n` +
-      `\`\`\`\n!log committed: finish landing page did: got 70% done blocked: ran out of time\`\`\``
+      `\`\`\`\n!log committed: [what you planned] did: [what you did] blocked: [what got in the way]\`\`\``
     ).catch(() => {});
     return;
   }
@@ -225,22 +224,31 @@ if (msg.startsWith('!log')) {
   const blocked = blockedMatch ? blockedMatch[1].trim() : 'Nothing';
 
   const streak = await updateStreak(message.author.id, message.author.username);
-  const streakTag = streak > 1 ? ` · ${streak} week streak 🔥` : '';
 
-  await progressChannel.send(
-    `**Progress Log — ${message.member.displayName}**${streakTag}\n` +
-    `───────────────────────────\n` +
-    `📌 **Committed:** ${committed}\n` +
-    `✅ **Did:** ${did}\n` +
-    `🚧 **Blocked by:** ${blocked}\n` +
-    `───────────────────────────`
-  ).catch(() => {});
+  const { EmbedBuilder } = require('discord.js');
+  const embed = new EmbedBuilder()
+    .setColor(0x7C3AED)
+    .setAuthor({ 
+      name: message.member.displayName, 
+      iconURL: message.author.displayAvatarURL({ dynamic: true }) 
+    })
+    .setTitle('Progress Log')
+    .addFields(
+      { name: '📌 Committed', value: committed, inline: false },
+      { name: '✅ Did', value: did, inline: false },
+      { name: '🚧 Blocked by', value: blocked, inline: false }
+    )
+    .setFooter({ 
+      text: streak > 1 ? `${streak} week streak 🔥` : 'First log this streak' 
+    })
+    .setTimestamp();
 
+  await progressChannel.send({ embeds: [embed] }).catch(() => {});
   await message.delete().catch(() => {});
   return;
 }
 
-// ==================== !win COMMAND ====================
+// ==================== !win COMMAND (Improved with Embed) ====================
 if (msg.startsWith('!win')) {
   const winsChannel = getChannel(message.guild, CONFIG.CHANNELS.WINS);
   if (!winsChannel) {
@@ -254,10 +262,18 @@ if (msg.startsWith('!win')) {
     return;
   }
 
-  await winsChannel.send(
-    `🏆 **Win — ${message.member.displayName}**\n\n${winText}`
-  ).catch(() => {});
+  const { EmbedBuilder } = require('discord.js');
+  const embed = new EmbedBuilder()
+    .setColor(0x22C55E) // Green color for wins
+    .setAuthor({ 
+      name: message.member.displayName, 
+      iconURL: message.author.displayAvatarURL({ dynamic: true }) 
+    })
+    .setTitle('🏆 Win Shared')
+    .setDescription(winText)
+    .setTimestamp();
 
+  await winsChannel.send({ embeds: [embed] }).catch(() => {});
   await message.delete().catch(() => {});
   return;
 }
