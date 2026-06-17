@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const express = require('express');
 const cron = require('node-cron');
 const { Pool } = require('pg');
@@ -63,13 +63,12 @@ function getPrevWeekKey() {
 async function updateStreak(userId, username) {
   const weekKey = getWeekKey();
   const prevKey = getPrevWeekKey();
-
   const res = await pool.query('SELECT * FROM streaks WHERE user_id = $1', [userId]);
   let user = res.rows[0];
 
   if (!user) {
     await pool.query(
-      `INSERT INTO streaks (user_id, username, current_streak, last_week, total_logs) 
+      `INSERT INTO streaks (user_id, username, current_streak, last_week, total_logs)
        VALUES ($1, $2, 1, $3, 1)`,
       [userId, username, weekKey]
     );
@@ -77,16 +76,14 @@ async function updateStreak(userId, username) {
   }
 
   let newStreak = user.current_streak;
-  if (user.last_week === weekKey) {
-    // already logged this week
-  } else if (user.last_week === prevKey) {
+  if (user.last_week === prevKey) {
     newStreak += 1;
-  } else {
+  } else if (user.last_week !== weekKey) {
     newStreak = 1;
   }
 
   await pool.query(
-    `UPDATE streaks SET username = $1, current_streak = $2, last_week = $3, total_logs = total_logs + 1 
+    `UPDATE streaks SET username = $1, current_streak = $2, last_week = $3, total_logs = total_logs + 1
      WHERE user_id = $4`,
     [username, newStreak, weekKey, userId]
   );
@@ -129,7 +126,7 @@ function getChannel(guild, name) {
 }
 
 // ==================== READY ====================
-client.once('clientReady', async () => {
+client.once('ready', async () => {
   console.log(`✅ Bot is online as ${client.user.tag}`);
   await initDatabase();
   startScheduler();
@@ -161,6 +158,7 @@ client.on('guildMemberAdd', async (member) => {
 // ==================== MESSAGE HANDLER ====================
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+
   const ch = message.channel.name;
   const msg = message.content.trim().toLowerCase();
 
@@ -177,9 +175,9 @@ client.on('messageCreate', async (message) => {
   if (ch === CONFIG.CHANNELS.PROGRESS_LOGS) {
     await message.react('✅').catch(() => {});
     const streak = await updateStreak(message.author.id, message.author.username);
-
     const winsChannel = getChannel(message.guild, CONFIG.CHANNELS.WINS);
     const milestones = { 4: '4-week streak', 8: '8-week streak', 12: '12-week streak' };
+
     if (milestones[streak] && winsChannel) {
       await winsChannel.send(
         `🔥 **${milestones[streak]}!** ${message.author} has posted consistently for ${streak} weeks straight.`
@@ -195,189 +193,180 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ====================== COMMANDS ======================
-// ==================== !log COMMAND ====================
-// ==================== !log COMMAND (Improved with Embed) ====================
-if (msg.startsWith('!log')) {
-  const progressChannel = getChannel(message.guild, CONFIG.CHANNELS.PROGRESS_LOGS);
-  if (!progressChannel) {
-    await message.reply('Cannot find the #progress-logs channel.').catch(() => {});
+  // ==================== COMMANDS ====================
+
+  // !log
+  if (msg.startsWith('!log')) {
+    const progressChannel = getChannel(message.guild, CONFIG.CHANNELS.PROGRESS_LOGS);
+    if (!progressChannel) {
+      await message.reply('Cannot find the #progress-logs channel.').catch(() => {});
+      return;
+    }
+
+    const content = message.content.slice(4).trim();
+    const committedMatch = content.match(/committed:\s*(.+?)(?=\s*did:|\s*blocked:|$)/is);
+    const didMatch = content.match(/did:\s*(.+?)(?=\s*committed:|\s*blocked:|$)/is);
+    const blockedMatch = content.match(/blocked:\s*(.+?)(?=\s*committed:|\s*did:|$)/is);
+
+    if (!committedMatch || !didMatch) {
+      await message.reply(
+        `Use this format:\n` +
+        `\`\`\`\n!log committed: [what you planned] did: [what you did] blocked: [what got in the way]\`\`\``
+      ).catch(() => {});
+      return;
+    }
+
+    const committed = committedMatch[1].trim();
+    const did = didMatch[1].trim();
+    const blocked = blockedMatch ? blockedMatch[1].trim() : 'Nothing';
+    const streak = await updateStreak(message.author.id, message.author.username);
+
+    const embed = new EmbedBuilder()
+      .setColor(0x7C3AED)
+      .setAuthor({
+        name: message.member.displayName,
+        iconURL: message.author.displayAvatarURL({ dynamic: true })
+      })
+      .setTitle('Progress Log')
+      .addFields(
+        { name: '📌 Committed', value: committed, inline: false },
+        { name: '✅ Did', value: did, inline: false },
+        { name: '🚧 Blocked by', value: blocked, inline: false }
+      )
+      .setFooter({
+        text: streak > 1 ? `${streak} week streak 🔥` : 'First log this streak'
+      })
+      .setTimestamp();
+
+    await progressChannel.send({ embeds: [embed] }).catch(() => {});
+    await message.delete().catch(() => {});
     return;
   }
 
-  const content = message.content.slice(4).trim();
+  // !win
+  if (msg.startsWith('!win')) {
+    const winsChannel = getChannel(message.guild, CONFIG.CHANNELS.WINS);
+    if (!winsChannel) {
+      await message.reply('Cannot find the #wins channel.').catch(() => {});
+      return;
+    }
 
-  const committedMatch = content.match(/committed:\s*(.+?)(?=\s*did:|\s*blocked:|$)/is);
-  const didMatch = content.match(/did:\s*(.+?)(?=\s*committed:|\s*blocked:|$)/is);
-  const blockedMatch = content.match(/blocked:\s*(.+?)(?=\s*committed:|\s*did:|$)/is);
+    const winText = message.content.slice(4).trim();
+    if (!winText) {
+      await message.reply('Tell us what the win is.\nExample: `!win sent my first cold email and got a reply`').catch(() => {});
+      return;
+    }
 
-  if (!committedMatch || !didMatch) {
+    const embed = new EmbedBuilder()
+      .setColor(0x22C55E)
+      .setAuthor({
+        name: message.member.displayName,
+        iconURL: message.author.displayAvatarURL({ dynamic: true })
+      })
+      .setTitle('🏆 Win Shared')
+      .setDescription(winText)
+      .setTimestamp();
+
+    await winsChannel.send({ embeds: [embed] }).catch(() => {});
+    await message.delete().catch(() => {});
+    return;
+  }
+
+  // !guide
+  if (msg === '!guide') {
     await message.reply(
-      `Use this format:\n` +
-      `\`\`\`\n!log committed: [what you planned] did: [what you did] blocked: [what got in the way]\`\`\``
+      `**📌 How Visionary Village Works**\n\n` +
+      `This is a structured accountability community.\n\n` +
+      `**Weekly Rhythm:**\n` +
+      `• **Monday 9pm** — Mission drops\n` +
+      `• **Wednesday 9pm** — Mid-week check-in\n` +
+      `• **Friday 9pm** — Progress log reminder\n` +
+      `• **Saturday** — Team calls\n\n` +
+      `**Commands:** \`!log\` • \`!win\` • \`!streak\` • \`!leaderboard\` • \`!help\``
     ).catch(() => {});
     return;
   }
 
-  const committed = committedMatch[1].trim();
-  const did = didMatch[1].trim();
-  const blocked = blockedMatch ? blockedMatch[1].trim() : 'Nothing';
+  // !streak
+  if (msg === '!streak') {
+    const userData = await getUserStreak(message.author.id);
+    if (!userData || userData.current_streak === 0) {
+      await message.reply('No streak yet. Start logging with `!log`.');
+      return;
+    }
 
-  const streak = await updateStreak(message.author.id, message.author.username);
+    const embed = new EmbedBuilder()
+      .setColor(0x7C3AED)
+      .setAuthor({
+        name: message.member.displayName,
+        iconURL: message.author.displayAvatarURL({ dynamic: true })
+      })
+      .setTitle('Your Consistency Streak')
+      .addFields(
+        { name: 'Current Streak', value: `**${userData.current_streak} week${userData.current_streak !== 1 ? 's' : ''}** 🔥`, inline: true },
+        { name: 'Total Logs', value: `**${userData.total_logs}**`, inline: true }
+      )
+      .setTimestamp();
 
-  const { EmbedBuilder } = require('discord.js');
-  const embed = new EmbedBuilder()
-    .setColor(0x7C3AED)
-    .setAuthor({ 
-      name: message.member.displayName, 
-      iconURL: message.author.displayAvatarURL({ dynamic: true }) 
-    })
-    .setTitle('Progress Log')
-    .addFields(
-      { name: '📌 Committed', value: committed, inline: false },
-      { name: '✅ Did', value: did, inline: false },
-      { name: '🚧 Blocked by', value: blocked, inline: false }
-    )
-    .setFooter({ 
-      text: streak > 1 ? `${streak} week streak 🔥` : 'First log this streak' 
-    })
-    .setTimestamp();
-
-  await progressChannel.send({ embeds: [embed] }).catch(() => {});
-  await message.delete().catch(() => {});
-  return;
-}
-
-// ==================== !win COMMAND (Improved with Embed) ====================
-if (msg.startsWith('!win')) {
-  const winsChannel = getChannel(message.guild, CONFIG.CHANNELS.WINS);
-  if (!winsChannel) {
-    await message.reply('Cannot find the #wins channel.').catch(() => {});
+    await message.reply({ embeds: [embed] }).catch(() => {});
     return;
   }
 
-  const winText = message.content.slice(4).trim();
-  if (!winText) {
-    await message.reply('Tell us what the win is.\nExample: `!win sent my first cold email and got a reply`').catch(() => {});
+  // !leaderboard
+  if (msg === '!leaderboard') {
+    const top = await getTopStreaks(5);
+    if (top.length === 0) {
+      await message.reply('No streaks yet. Be the first!');
+      return;
+    }
+
+    const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
+    const description = top.map((u, i) =>
+      `${medals[i]} **${u.username}** — ${u.current_streak} week${u.current_streak !== 1 ? 's' : ''}`
+    ).join('\n');
+
+    const embed = new EmbedBuilder()
+      .setColor(0x7C3AED)
+      .setTitle('🔥 Consistency Leaderboard')
+      .setDescription(description)
+      .setFooter({ text: 'Top 5 streaks in Visionary Village' })
+      .setTimestamp();
+
+    await message.reply({ embeds: [embed] }).catch(() => {});
     return;
   }
 
-  const { EmbedBuilder } = require('discord.js');
-  const embed = new EmbedBuilder()
-    .setColor(0x22C55E) // Green color for wins
-    .setAuthor({ 
-      name: message.member.displayName, 
-      iconURL: message.author.displayAvatarURL({ dynamic: true }) 
-    })
-    .setTitle('🏆 Win Shared')
-    .setDescription(winText)
-    .setTimestamp();
-
-  await winsChannel.send({ embeds: [embed] }).catch(() => {});
-  await message.delete().catch(() => {});
-  return;
-}
-  // ==================== !guide COMMAND ====================
-if (msg === '!guide') {
-  await message.reply(
-    `**📌 How Visionary Village Works**\n\n` +
-    `This is a structured accountability community. The bot helps keep everything running automatically.\n\n` +
-    `**Weekly Rhythm:**\n` +
-    `• **Monday 9pm** — Mission drops in #weekly-mission\n` +
-    `• **Wednesday 9pm** — Mid-week check-in\n` +
-    `• **Friday 9pm** — Progress log reminder\n` +
-    `• **Saturday** — Team calls\n` +
-    `• **Sunday 8pm** — Week reset\n\n` +
-    `**Useful Commands:**\n` +
-    `• \`!log\` — Post your weekly progress\n` +
-    `• \`!win [text]\` — Share a win\n` +
-    `• \`!streak\` — Check your consistency streak\n` +
-    `• \`!leaderboard\` — Top 5 streaks\n` +
-    `• \`!help\` — See all commands\n\n` +
-    `Stay consistent. That’s what makes this work.`
-  ).catch(() => {});
-  return;
-}
-
- // ==================== !streak COMMAND ====================
-if (msg === '!streak') {
-  const userData = await getUserStreak(message.author.id);
-  if (!userData || userData.current_streak === 0) {
-    await message.reply('No streak yet. Start logging with `!log`.');
-    return;
-  }
-
-  const { EmbedBuilder } = require('discord.js');
-  const embed = new EmbedBuilder()
-    .setColor(0x7C3AED)
-    .setAuthor({ 
-      name: message.member.displayName, 
-      iconURL: message.author.displayAvatarURL({ dynamic: true }) 
-    })
-    .setTitle('Your Consistency Streak')
-    .addFields(
-      { name: 'Current Streak', value: `**${userData.current_streak} week${userData.current_streak !== 1 ? 's' : ''}** 🔥`, inline: true },
-      { name: 'Total Logs', value: `**${userData.total_logs}**`, inline: true }
-    )
-    .setTimestamp();
-
-  await message.reply({ embeds: [embed] }).catch(() => {});
-  return;
-}
-
- // ==================== !leaderboard COMMAND ====================
-if (msg === '!leaderboard') {
-  const top = await getTopStreaks(5);
-  if (top.length === 0) {
-    await message.reply('No streaks yet. Be the first!');
-    return;
-  }
-
-  const medals = ['🥇', '🥈', '🥉', '4.', '5.'];
-  const description = top.map((u, i) => 
-    `${medals[i]} **${u.username}** — ${u.current_streak} week${u.current_streak !== 1 ? 's' : ''}`
-  ).join('\n');
-
-  const { EmbedBuilder } = require('discord.js');
-  const embed = new EmbedBuilder()
-    .setColor(0x7C3AED)
-    .setTitle('🔥 Consistency Leaderboard')
-    .setDescription(description)
-    .setFooter({ text: 'Top 5 streaks in Visionary Village' })
-    .setTimestamp();
-
-  await message.reply({ embeds: [embed] }).catch(() => {});
-  return;
-}
-
+  // !ping
   if (msg === '!ping') {
     await message.reply('Online. 🟢');
     return;
   }
 
-// ==================== !help COMMAND ====================
-if (msg === '!help') {
-  await message.reply(
-    `**Visionary Village — Bot Commands**\n\n` +
-    `**Progress & Accountability**\n` +
-    `\`!log\` — Post your weekly progress log\n` +
-    `\`!win [text]\` — Share a win in #wins\n` +
-    `\`!streak\` — Check your current streak\n` +
-    `\`!leaderboard\` — Top 5 consistency streaks\n\n` +
-    `**Information**\n` +
-    `\`!guide\` — Full explanation of how everything works\n` +
-    `\`!help\` — Show this command list\n` +
-    `\`!ping\` — Check if the bot is online`
-  ).catch(() => {});
-  return;
-}
+  // !help
+  if (msg === '!help') {
+    await message.reply(
+      `**Visionary Village — Bot Commands**\n\n` +
+      `\`!log\` — Post your weekly progress\n` +
+      `\`!win [text]\` — Share a win\n` +
+      `\`!streak\` — Check your streak\n` +
+      `\`!leaderboard\` — Top streaks\n` +
+      `\`!guide\` — How everything works\n` +
+      `\`!help\` — This message`
+    ).catch(() => {});
+    return;
+  }
 });
 
+// ==================== SCHEDULER ====================
 function startScheduler() {
+  // Get the first guild the bot is in (more reliable than before)
   const guild = client.guilds.cache.first();
-  if (!guild) return;
+  if (!guild) {
+    console.log('⚠️ No guild found for scheduler');
+    return;
+  }
 
-  // Monday 9pm — Weekly Mission
+  // Monday 21:00 — Weekly Mission
   cron.schedule('0 21 * * 1', async () => {
     const ch = getChannel(guild, CONFIG.CHANNELS.WEEKLY_MISSION);
     if (!ch) return;
@@ -387,12 +376,11 @@ function startScheduler() {
       `**This week I will:**\n` +
       `1. [specific task]\n` +
       `2. [specific task]\n` +
-      `3. [specific task]\n\n` +
-      `Your team leader will review them.`
+      `3. [specific task]`
     ).catch(() => {});
   }, { timezone: CONFIG.TIMEZONE });
 
-  // Wednesday 9pm — Mid-week Check
+  // Wednesday 21:00 — Mid-week Check
   cron.schedule('0 21 * * 3', async () => {
     const ch = getChannel(guild, CONFIG.CHANNELS.GENERAL);
     if (!ch) return;
@@ -406,40 +394,18 @@ function startScheduler() {
     ).catch(() => {});
   }, { timezone: CONFIG.TIMEZONE });
 
-  // Friday 9pm — Progress Log Reminder
+  // Friday 21:00 — Progress Log Reminder
   cron.schedule('0 21 * * 5', async () => {
     const ch = getChannel(guild, CONFIG.CHANNELS.PROGRESS_LOGS);
     if (!ch) return;
     await ch.send(
       `**📊 Progress Log Time**\n\n` +
-      `Use this command to post your update:\n` +
+      `Use this format:\n` +
       `\`\`\`!log committed: [planned] did: [done] blocked: [what got in the way]\`\`\``
     ).catch(() => {});
   }, { timezone: CONFIG.TIMEZONE });
 
-  // Saturday 9am — Team Calls
-  cron.schedule('0 9 * * 6', async () => {
-    const ch = getChannel(guild, CONFIG.CHANNELS.TEAM_MEETINGS);
-    if (!ch) return;
-    await ch.send(
-      `**📞 Team Calls Today**\n\n` +
-      `Check with your team leader for the call time.\n` +
-      `Come prepared with your wins and blockers.`
-    ).catch(() => {});
-  }, { timezone: CONFIG.TIMEZONE });
-
-  // Sunday 8pm — Week Reset
-  cron.schedule('0 20 * * 0', async () => {
-    const ch = getChannel(guild, CONFIG.CHANNELS.GENERAL);
-    if (!ch) return;
-    await ch.send(
-      `**🔄 Sunday Reset**\n\n` +
-      `New week starts tomorrow.\n` +
-      `Take a few minutes tonight to think about your focus for next week.`
-    ).catch(() => {});
-  }, { timezone: CONFIG.TIMEZONE });
-
-  console.log('✅ Scheduler running with improved messages');
+  console.log('✅ Scheduler started');
 }
 
 client.login(process.env.DISCORD_TOKEN);
